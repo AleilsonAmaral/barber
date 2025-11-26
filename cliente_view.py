@@ -4,12 +4,33 @@ import datetime
 import pandas as pd
 import time 
 
-# A função AGORA ENGLOBA TODO O CÓDIGO
-def render_cliente_view(SERVICOS, HORARIOS, formatar_moeda, gerar_link_whatsapp, salvar_dados):
+# A função AGORA espera os novos argumentos: caminho_imagem e config_barbearia
+def render_cliente_view(SERVICOS, HORARIOS, formatar_moeda, gerar_link_whatsapp, salvar_dados, caminho_imagem, config_barbearia):
     """
-    Renderiza a interface de agendamento e cancelamento para o cliente.
+    Renderiza a interface de agendamento e cancelamento para o cliente,
+    usando as configurações dinâmicas da barbearia logada/atual.
     """
-    st.title("✂️ Viking Cuts")
+    
+    # --- Extrair Configurações Dinâmicas ---
+    nome_barbearia = config_barbearia.get('name', 'BARBEARIA') # Obtém o nome ou usa BARBEARIA como fallback
+    whatsapp_barbearia = config_barbearia.get('whatsapp', '351999999999') # Obtém o WhatsApp ou usa o fixo
+    logo_url = config_barbearia.get('logo_url')
+    
+    # --- 1. EXIBIÇÃO DA IMAGEM/LOGO ---
+    if logo_url:
+        # Exibir Logo URL (do secrets.toml)
+        st.image(logo_url, caption=f"Bem-vindo à {nome_barbearia}", use_column_width=True)
+    else:
+        # Exibir imagem local (fallback se não houver URL no secrets)
+        st.image(
+            caminho_imagem,
+            caption="Sistema de Agendamento Online",
+            use_column_width=True
+        )
+    st.divider()
+    # ----------------------------
+
+    st.title(f"✂️ {nome_barbearia}") # Usa o nome dinâmico
     st.write("Agende o seu corte em segundos.")
     st.divider()
 
@@ -41,6 +62,7 @@ def render_cliente_view(SERVICOS, HORARIOS, formatar_moeda, gerar_link_whatsapp,
     data_str = data_escolhida.strftime("%Y-%m-%d")
 
     # --- Lógica de Filtragem de Horários ---
+    # Nota: st.session_state.agendamentos já está carregada isoladamente pelo app.py
     agendamentos_hoje = [
         a for a in st.session_state.agendamentos
         if a.get('data') == data_str
@@ -83,7 +105,9 @@ def render_cliente_view(SERVICOS, HORARIOS, formatar_moeda, gerar_link_whatsapp,
         # Link do WhatsApp
         if pode_agir:
             confirmacao_wpp = f"{servico_escolhido} para {data_escolhida.strftime('%d/%m/%Y')} às {horario_escolhido}"
-            link_wpp = gerar_link_whatsapp(confirmacao_wpp, horario_escolhido, nome_cliente.strip())
+            
+            # CHAMA A FUNÇÃO GERAR_LINK_WHATSAPP COM O NÚMERO DINÂMICO
+            link_wpp = gerar_link_whatsapp(whatsapp_barbearia, confirmacao_wpp, horario_escolhido, nome_cliente.strip())
             
             # Adiciona o link ao botão do WhatsApp usando Markdown/HTML
             st.markdown(f"""
@@ -163,30 +187,30 @@ def render_cliente_view(SERVICOS, HORARIOS, formatar_moeda, gerar_link_whatsapp,
                 
                 confirm_btn = st.form_submit_button("Sim, Cancelar Agendamento Selecionado", type="primary")
 
-                if confirm_btn:
-                    # 1. Localizar o agendamento no DataFrame de exibição para obter as chaves
-                    agendamento_remover_df = df_meus_agendamentos[df_meus_agendamentos['ID_Canc'] == agendamento_selecionado_id].iloc[0].to_dict()
-                    
-                    # 2. Chaves únicas para localizar na lista original
-                    data_alvo = agendamento_remover_df.get('data')
-                    horario_alvo = agendamento_remover_df.get('horario')
-                    servico_alvo = agendamento_remover_df.get('servico')
+            if confirm_btn:
+                # 1. Localizar o agendamento no DataFrame de exibição para obter as chaves
+                agendamento_remover_df = df_meus_agendamentos[df_meus_agendamentos['ID_Canc'] == agendamento_selecionado_id].iloc[0].to_dict()
+                
+                # 2. Chaves únicas para localizar na lista original
+                data_alvo = agendamento_remover_df.get('data')
+                horario_alvo = agendamento_remover_df.get('horario')
+                servico_alvo = agendamento_remover_df.get('servico')
 
-                    indice_original = -1
-                    for i, item in enumerate(st.session_state.agendamentos):
-                        if (item.get('data') == data_alvo) and \
-                           (item.get('horario') == horario_alvo) and \
-                           (item.get('servico') == servico_alvo) and \
-                           (item.get('cliente', '').strip().lower() == nome_cliente_cancelar.lower()):
-                            indice_original = i
-                            break
+                indice_original = -1
+                for i, item in enumerate(st.session_state.agendamentos):
+                    if (item.get('data') == data_alvo) and \
+                       (item.get('horario') == horario_alvo) and \
+                       (item.get('servico') == servico_alvo) and \
+                       (item.get('cliente', '').strip().lower() == nome_cliente_cancelar.lower()):
+                        indice_original = i
+                        break
 
-                    if indice_original != -1:
-                        st.session_state.agendamentos.pop(indice_original)
-                        # Ação de Persistência
-                        salvar_dados(st.session_state.agendamentos)
-                        st.success(f"Cancelamento de {servico_alvo} em {data_alvo} às {horario_alvo} efetuado com sucesso!")
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        st.error("Erro ao localizar o agendamento para cancelamento. Tente novamente.")
+                if indice_original != -1:
+                    st.session_state.agendamentos.pop(indice_original)
+                    # Ação de Persistência
+                    salvar_dados(st.session_state.agendamentos)
+                    st.success(f"Cancelamento de {servico_alvo} em {data_alvo} às {horario_alvo} efetuado com sucesso!")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("Erro ao localizar o agendamento para cancelamento. Tente novamente.")

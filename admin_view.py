@@ -2,13 +2,20 @@
 import streamlit as st
 import pandas as pd
 import datetime
-import time
+import time 
 
-def render_admin_view(SERVICOS, formatar_moeda, gerar_link_whatsapp, salvar_dados):
+# A função AGORA espera o novo argumento: config_barbearia
+def render_admin_view(SERVICOS, formatar_moeda, gerar_link_whatsapp, salvar_dados, config_barbearia):
     """
-    Renderiza a interface de gestão, cancelamento e exportação para o administrador.
+    Renderiza a interface de gestão, visualização e exportação (sem cancelamento)
+    para o administrador, usando as configurações dinâmicas da barbearia.
     """
-    st.title("👑 Gestão Viking Cuts")
+    
+    # --- Extrair Configurações Dinâmicas ---
+    nome_barbearia = config_barbearia.get('name', 'BARBEARIA') # Obtém o nome ou usa BARBEARIA como fallback
+    # Logo URL não é exibida na visão admin, mas o nome é.
+    
+    st.title(f"👑 Gestão {nome_barbearia}") # Título agora é dinâmico
     st.divider()
 
     # --- VISUALIZAÇÃO DA AGENDA DO DIA ---
@@ -22,6 +29,7 @@ def render_admin_view(SERVICOS, formatar_moeda, gerar_link_whatsapp, salvar_dado
     st.subheader(f"Agenda para {data_visao_admin.strftime('%d/%m/%Y')}")
     
     # 1. Filtrar Agendamentos pela Data Escolhida para Visualização
+    # Nota: st.session_state.agendamentos já está carregada isoladamente pelo app.py
     agendamentos_filtrados = [
         a for a in st.session_state.agendamentos 
         if a.get('data') == data_str_admin
@@ -33,7 +41,7 @@ def render_admin_view(SERVICOS, formatar_moeda, gerar_link_whatsapp, salvar_dado
         # Converter a lista de dicionários filtrada para um DataFrame do pandas
         df_agendamentos = pd.DataFrame(agendamentos_filtrados)
 
-        # Adicionar uma coluna de ID temporário para seleção e exclusão
+        # Adicionar uma coluna de ID temporário para seleção
         df_agendamentos['ID'] = range(1, len(df_agendamentos) + 1)
         
         # Reorganizar e Formatar para visualização
@@ -41,94 +49,23 @@ def render_admin_view(SERVICOS, formatar_moeda, gerar_link_whatsapp, salvar_dado
         df_agendamentos_display = df_agendamentos.copy()
         df_agendamentos_display['preco'] = df_agendamentos_display['preco'].apply(formatar_moeda)
         
-        # --- Formulário de Exclusão (Com Confirmação) ---
-        st.markdown("### Cancelar Agendamento")
-        with st.form("form_excluir_agendamento"):
-            st.dataframe(
-                df_agendamentos_display, 
-                hide_index=True, 
-                use_container_width=True,
-                column_config={
-                    "ID": st.column_config.Column("ID", width="small"),
-                    "horario": st.column_config.Column("Horário ⏰", width="small"),
-                    "cliente": st.column_config.Column("Cliente 👤"),
-                    "servico": st.column_config.Column("Serviço"),
-                    "preco": st.column_config.Column("Preço 💰", width="small"),
-                    "telemovel": st.column_config.Column("Telemóvel 📞"),
-                    "data": st.column_config.Column("Data", disabled=True),
-                    "data_hora_registro": st.column_config.Column("Registro", disabled=True)
-                }
-            )
-
-            col_input, col_confirm, col_btn = st.columns([0.5, 0.3, 0.2])
-
-            with col_input:
-                id_para_excluir = st.number_input(
-                    "Digite o ID do agendamento a ser cancelado:", 
-                    min_value=1, 
-                    max_value=max(1, len(df_agendamentos)), # Max value seguro
-                    step=1,
-                    key='id_input_admin'
-                )
-            
-            with col_confirm:
-                # CHECKBOX DE CONFIRMAÇÃO
-                st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
-                confirmacao = st.checkbox("Confirmar Exclusão?", key="confirm_delete")
-            
-            with col_btn:
-                st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                
-                # O botão agora tem um rótulo claro e usa a variável 'confirmacao'
-                submitted_excluir = st.form_submit_button("🚨 FINALIZAR EXCLUSÃO", 
-                                                         type="primary", 
-                                                         use_container_width=True,
-                                                         disabled=not confirmacao)
-
-
-            if submitted_excluir:
-                if confirmacao:
-                    indice_a_remover_df = int(id_para_excluir) - 1 
-                    
-                    try:
-                        # 1. IDENTIFICAR O ITEM NO DATAFRAME FILTRADO
-                        agendamento_a_remover_parcial = df_agendamentos.iloc[indice_a_remover_df]
-                        
-                        # 🚀 CORREÇÃO DA LÓGICA DE BUSCA: Garante que a data seja uma STRING
-                        data_alvo = str(agendamento_a_remover_parcial['data']) 
-                        
-                        if isinstance(data_alvo, datetime.date):
-                             data_alvo = data_alvo.strftime("%Y-%m-%d")
-
-                        horario_alvo = agendamento_a_remover_parcial['horario']
-                        cliente_alvo = agendamento_a_remover_parcial['cliente']
-                        
-                        indice_original = -1
-                        
-                        # 2. PROCURAR O ITEM CORRETO NA LISTA ORIGINAL (st.session_state.agendamentos)
-                        for i, item in enumerate(st.session_state.agendamentos):
-                            # Compara as chaves únicas (Data, Horário e Cliente)
-                            if (item.get('data') == data_alvo) and \
-                               (item.get('horario') == horario_alvo) and \
-                               (item.get('cliente') == cliente_alvo):
-                                indice_original = i
-                                break
-
-                        if indice_original != -1:
-                            # 3. REMOVER E SALVAR
-                            st.session_state.agendamentos.pop(indice_original)
-                            salvar_dados(st.session_state.agendamentos)
-
-                            st.success(f"Agendamento (ID: {id_para_excluir}) de {cliente_alvo} cancelado com sucesso. Agenda atualizada!")
-                            time.sleep(1) 
-                            st.rerun() 
-                        else:
-                            st.error("Erro: Não foi possível localizar o agendamento na base de dados principal.")
-                            
-                    except IndexError:
-                        st.error("Erro: ID de agendamento inválido. Por favor, verifique o número na tabela.")
-                    except Exception as e:
-                        st.error(f"Erro inesperado ao cancelar: {e}")
+        # --- EXIBIÇÃO DA TABELA ---
+        st.markdown("### Agendamentos Confirmados")
+        st.dataframe(
+            df_agendamentos_display, 
+            hide_index=True, 
+            use_container_width=True,
+            column_config={
+                "ID": st.column_config.Column("ID", width="small"),
+                "horario": st.column_config.Column("Horário ⏰", width="small"),
+                "cliente": st.column_config.Column("Cliente 👤"),
+                "servico": st.column_config.Column("Serviço"),
+                "preco": st.column_config.Column("Preço 💰", width="small"),
+                "telemovel": st.column_config.Column("Telemóvel 📞"),
+                "data": st.column_config.Column("Data", disabled=True),
+                "data_hora_registro": st.column_config.Column("Registro", disabled=True)
+            }
+        )
 
         st.divider()
 
@@ -146,7 +83,7 @@ def render_admin_view(SERVICOS, formatar_moeda, gerar_link_whatsapp, salvar_dado
         with col_sum:
             st.metric("Receita Prevista", formatar_moeda(valor_total_bruto), delta_color="off")
     
-    # --- FILTRO E EXPORTAÇÃO DE DADOS ---
+    # --- FILTRO E EXPORTAÇÃO DE DADOS (Mantido) ---
     st.divider()
     st.subheader("📊 Exportar Agenda por Período")
     
@@ -164,13 +101,13 @@ def render_admin_view(SERVICOS, formatar_moeda, gerar_link_whatsapp, salvar_dado
         
         with col_start:
             data_inicio = st.date_input("Data Inicial:", 
-                                        value=data_minima,
-                                        min_value=data_minima)
+                                         value=data_minima,
+                                         min_value=data_minima)
         
         with col_end:
             data_fim = st.date_input("Data Final:", 
-                                     value=hoje, 
-                                     min_value=data_inicio)
+                                         value=hoje, 
+                                         min_value=data_inicio)
 
         # Filtra a base de dados completa (session_state) pelo período
         df_completo = pd.DataFrame(st.session_state.agendamentos)
@@ -203,12 +140,12 @@ def render_admin_view(SERVICOS, formatar_moeda, gerar_link_whatsapp, salvar_dado
             st.download_button(
                 label="⬇️ Baixar CSV Filtrado",
                 data=csv_data,
-                file_name=f'agenda_viking_cuts_{data_inicio.strftime("%Y%m%d")}_a_{data_fim.strftime("%Y%m%d")}.csv',
+                file_name=f'agenda_{nome_barbearia.lower().replace(" ", "_")}_{data_inicio.strftime("%Y%m%d")}_a_{data_fim.strftime("%Y%m%d")}.csv', # Nome do arquivo de exportação dinâmico
                 mime='text/csv',
                 use_container_width=True
             )
         else:
-             st.warning("Nenhum agendamento encontrado no período selecionado.")
+            st.warning("Nenhum agendamento encontrado no período selecionado.")
 
     else:
         st.info("Não há dados de agendamento salvos para exportar.")

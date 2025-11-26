@@ -4,7 +4,8 @@
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {
-    "url": "https://barber-5nyhpywulqzdaptmnqeflz.streamlit.app", 
+   
+    "url": "https://barber-5nyhpywulqzdaptmnqeflz.streamlit.app?app_key=SEGREDO_DE_ACESSO_UNICO_1A2B3C4D", 
     "cleartext": true
   }
 }

@@ -9,18 +9,16 @@ from cliente_view import render_cliente_view
 from admin_view import render_admin_view
 
 # IMPORTA O NOVO GERENCIADOR DE DADOS
-# Requer o arquivo data_manager.py na mesma pasta
 from data_manager import carregar_dados, salvar_dados 
 
 # --- Configuração da Página ---
 st.set_page_config(
-    page_title="Viking Cuts - Agendamento",
+    page_title="BARBEARIA - Agendamento",
     page_icon="✂️",
     layout="centered"
 )
 
 # --- Dados de Configuração ---
-# Valores ajustados para simular a moeda Real (R$)
 SERVICOS = {
     "Corte de Cabelo": 50.00,
     "Barba (Toalha Quente)": 40.00,
@@ -28,69 +26,116 @@ SERVICOS = {
     "Pezinho / Acabamento": 20.00
 }
 
-# Lista de horários expandida
 HORARIOS = [
     "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
     "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
     "17:00", "17:30", "18:00", "18:30", "19:00"
 ]
 
-# SENHA DE ACESSO ADMIN
-SENHA_ADMIN = "viking123" # <<< SENHA DEFINIDA AQUI
+# --- CONSTANTE DA IMAGEM ---
+CAMINHO_IMAGEM_AGENDAMENTO = "img/Agendamento_barbearia.png" 
 # ---------------------------
 
+# MAPAS DE ACESSO ADMIN (Lido do st.secrets)
+ADMIN_ACCOUNTS = st.secrets.get("admin_accounts", {})
+# ---------------------------
+
+# --- FUNÇÃO PRINCIPAL PARA GERENCIAR A CARGA DE DADOS ---
+def recarregar_dados_barbearia():
+    """
+    Função que força o carregamento dos dados da agenda baseados no ID atual.
+    Deve ser chamada após login ou na inicialização.
+    """
+    st.session_state.agendamentos = carregar_dados()
+    st.rerun()
+
 # --- 1. Base de Dados AGORA PERSISTENTE e Variáveis Globais (Session State) ---
+
+# AQUI, CARREGAMOS APENAS NA PRIMEIRA VEZ, SEMPRE USANDO O ID PADRÃO (GERAL)
 if 'agendamentos' not in st.session_state:
-    # Carrega os dados persistentes do arquivo CSV ao iniciar
     st.session_state.agendamentos = carregar_dados() 
 
 if 'modo_admin' not in st.session_state:
     st.session_state.modo_admin = False
+
+if 'barber_id' not in st.session_state:
+    st.session_state.barber_id = 'GERAL'
 
 # --- 2. Funções Auxiliares (Globais) ---
 def formatar_moeda(valor):
     """Formata um valor float para a string de moeda (Real Brasileiro)."""
     return f"R$ {valor:.2f}"
 
-def gerar_link_whatsapp(servico_com_data, horario, nome):
-    """Gera o link de confirmação via WhatsApp."""
+# A função AGORA RECEBE O NÚMERO DE WHATSAPP DA CONFIGURAÇÃO
+def gerar_link_whatsapp(numero_whatsapp, servico_com_data, horario, nome):
+    """Gera o link de confirmação via WhatsApp, usando o número dinâmico."""
     texto = f"Olá! Gostaria de confirmar o agendamento: {servico_com_data}. Cliente: {nome}."
-    texto_encoded = texto.replace(" ", "%20").replace(":", "%3A") # Garantir a codificação correta
-    return f"https://wa.me/351999999999?text={texto_encoded}"
+    texto_encoded = texto.replace(" ", "%20").replace(":", "%3A")
+    return f"https://wa.me/{numero_whatsapp}?text={texto_encoded}"
 
 # --- 3. Barra Lateral (Menu) ---
 with st.sidebar:
     st.title("Menu")
-    modo = st.radio("Escolha a Visão:", ["Cliente", "Dono da Barbearia"])
     
-    st.info("💡 Dica: A senha de Admin é: 'viking123'")
+    # Armazenamos o estado anterior do ID para detectar a mudança
+    id_anterior = st.session_state.barber_id 
+    
+    modo = st.radio("Escolha a Visão:", ["Cliente", "Dono da Barbearia"])
     
     # Define o estado do modo Admin
     if modo == "Dono da Barbearia":
-        # Pede a senha
-        senha_digitada = st.text_input("🔑 Digite a Senha de Admin:", type="password")
+        st.subheader("Acesso Administrador")
         
-        if senha_digitada == SENHA_ADMIN:
-            st.session_state.modo_admin = True
-            st.success("Acesso Admin Liberado!")
-        elif senha_digitada: # Se algo foi digitado, mas está errado
+        # Campos de Login
+        login_digitado = st.text_input("👤 Login:", key="admin_login")
+        senha_digitada = st.text_input("🔑 Senha:", type="password", key="admin_senha")
+        
+        # Lógica de Autenticação Multi-Conta
+        if login_digitado and senha_digitada:
+            senha_correta = ADMIN_ACCOUNTS.get(login_digitado)
+            
+            if senha_correta == senha_digitada:
+                st.session_state.modo_admin = True
+                # CRIA O ID ÚNICO DA BARBEARIA NA SESSÃO
+                st.session_state.barber_id = login_digitado.upper() 
+                st.success(f"Acesso Admin ({login_digitado}) Liberado!")
+                
+            elif senha_digitada:
+                st.session_state.modo_admin = False
+                st.session_state.barber_id = 'GERAL'
+                st.error("Login ou Senha Incorreta.")
+        elif not ADMIN_ACCOUNTS:
+             st.warning("Nenhuma conta de Admin configurada no secrets.toml ou no Streamlit Cloud.")
+        else:
             st.session_state.modo_admin = False
-            st.error("Senha Incorreta.")
-        else: # Nada digitado
-            st.session_state.modo_admin = False
+            st.session_state.barber_id = 'GERAL'
+            
     else:
+        # Se sair do modo admin (voltar para cliente), o ID deve ser redefinido
         st.session_state.modo_admin = False
+        st.session_state.barber_id = 'GERAL'
+        
+    # --- LÓGICA DE RECARGA: Se o ID da Barbearia Mudou, Recarrega os Dados ---
+    if st.session_state.barber_id != id_anterior:
+        recarregar_dados_barbearia() # Chama a recarga para isolar os dados
 
     # 💡 Dica de Tema Adicionada
     st.markdown("---")
     st.markdown("🌐 **Mudar Tema (Claro/Escuro):**")
     st.markdown("Vá em `⋮` (canto superior direito) > `Settings` > `Theme`.")
 
+# --- CARREGAR CONFIGURAÇÃO DA BARBEARIA ATUAL ---
+# Tenta buscar a configuração com o ID atual (Ex: BARBER_ALPHA)
+# O .get({}, {}).get() protege contra a falta da chave principal e da chave secundária.
+config_barbearia = st.secrets.get("barber_config", {}).get(st.session_state.barber_id, {})
+# ------------------------------------------------
+
 # --- 4. Lógica Principal de Redirecionamento ---
+
+# NOTA: O 'data_manager.py' e as views agora precisam usar st.session_state.barber_id
 if not st.session_state.modo_admin:
-    # CLIENTE: 5 argumentos (inclui HORARIOS e salvar_dados)
-    render_cliente_view(SERVICOS, HORARIOS, formatar_moeda, gerar_link_whatsapp, salvar_dados)
+    # CLIENTE: 7 argumentos (AGORA INCLUI A CONFIGURAÇÃO DINÂMICA)
+    render_cliente_view(SERVICOS, HORARIOS, formatar_moeda, gerar_link_whatsapp, salvar_dados, CAMINHO_IMAGEM_AGENDAMENTO, config_barbearia)
 else:
-    # ADMIN: 4 argumentos (NÃO inclui HORARIOS, mas inclui salvar_dados)
-    # A VISÃO ADMIN SÓ É RENDERIZADA SE st.session_state.modo_admin for True
-    render_admin_view(SERVICOS, formatar_moeda, gerar_link_whatsapp, salvar_dados)
+    # ADMIN: 5 argumentos (AGORA INCLUI A CONFIGURAÇÃO DINÂMICA)
+    render_admin_view(SERVICOS, formatar_moeda, gerar_link_whatsapp, salvar_dados, config_barbearia)
