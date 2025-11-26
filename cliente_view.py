@@ -4,8 +4,8 @@ import datetime
 import pandas as pd
 import time 
 
-# A função AGORA espera os novos argumentos: caminho_imagem e config_barbearia (7 argumentos no total)
-def render_cliente_view(SERVICOS, HORARIOS, formatar_moeda, gerar_link_whatsapp, salvar_dados, caminho_imagem, config_barbearia):
+# A função AGORA espera apenas 6 argumentos (REMOVE caminho_imagem)
+def render_cliente_view(SERVICOS, HORARIOS, formatar_moeda, gerar_link_whatsapp, salvar_dados, config_barbearia):
     """
     Renderiza a interface de agendamento e cancelamento para o cliente,
     usando as configurações dinâmicas da barbearia logada/atual.
@@ -20,14 +20,9 @@ def render_cliente_view(SERVICOS, HORARIOS, formatar_moeda, gerar_link_whatsapp,
     if logo_url:
         # Exibir Logo URL (do secrets.toml)
         st.image(logo_url, caption=f"Bem-vindo à {nome_barbearia}", use_column_width=True)
-    else:
-        # Exibir imagem local (fallback se não houver URL no secrets)
-        st.image(
-            caminho_imagem,
-            caption="Sistema de Agendamento Online",
-            use_column_width=True
-        )
-    st.divider()
+    
+    # REMOVIDO: O BLOCO 'else' que usava a imagem local foi removido
+    st.divider() # A divisa é mantida, independentemente da logo
     # ----------------------------
 
     st.title(f"✂️ {nome_barbearia}") # Usa o nome dinâmico

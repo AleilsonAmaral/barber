@@ -33,7 +33,7 @@ HORARIOS = [
 ]
 
 # --- CONSTANTE DA IMAGEM ---
-CAMINHO_IMAGEM_AGENDAMENTO = "img/agendamento_barbearia.png" 
+# REMOVIDO: CAMINHO_IMAGEM_AGENDAMENTO não é mais usado
 # ---------------------------
 
 # MAPAS DE ACESSO ADMIN (Lido do st.secrets)
@@ -134,8 +134,8 @@ config_barbearia = st.secrets.get("barber_config", {}).get(st.session_state.barb
 
 # NOTA: O 'data_manager.py' e as views agora precisam usar st.session_state.barber_id
 if not st.session_state.modo_admin:
-    # CLIENTE: 7 argumentos (AGORA INCLUI A CONFIGURAÇÃO DINÂMICA)
-    render_cliente_view(SERVICOS, HORARIOS, formatar_moeda, gerar_link_whatsapp, salvar_dados, CAMINHO_IMAGEM_AGENDAMENTO, config_barbearia)
+    # CLIENTE: 6 argumentos (REMOVEMOS O CAMINHO DA IMAGEM)
+    render_cliente_view(SERVICOS, HORARIOS, formatar_moeda, gerar_link_whatsapp, salvar_dados, config_barbearia)
 else:
-    # ADMIN: 5 argumentos (AGORA INCLUI A CONFIGURAÇÃO DINÂMICA)
+    # ADMIN: 5 argumentos (NÃO HOUVE MUDANÇA)
     render_admin_view(SERVICOS, formatar_moeda, gerar_link_whatsapp, salvar_dados, config_barbearia)
