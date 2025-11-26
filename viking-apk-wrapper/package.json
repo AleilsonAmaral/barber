@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {
-    "build": "mkdir -p www && echo 'Build placeholder executed for remote UI'",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+ "scripts": {
+  "build": "echo 'Build placeholder executed for remote UI'",
+  "test": "echo \"Error: no test specified\" && exit 1"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
