@@ -1,0 +1,10 @@
+{
+  "appId": "com.aleilson.vikingcuts", 
+  "appName": "VikingCutsApp",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://barber-5nyhpywqlqzdaqmgeflz.streamlit.app", 
+    "cleartext": true
+  }
+}
