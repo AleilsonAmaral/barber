@@ -4,7 +4,7 @@ import datetime
 import pandas as pd
 import time 
 
-# A função AGORA espera os novos argumentos: caminho_imagem e config_barbearia
+# A função AGORA espera os novos argumentos: caminho_imagem e config_barbearia (7 argumentos no total)
 def render_cliente_view(SERVICOS, HORARIOS, formatar_moeda, gerar_link_whatsapp, salvar_dados, caminho_imagem, config_barbearia):
     """
     Renderiza a interface de agendamento e cancelamento para o cliente,

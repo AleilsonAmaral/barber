@@ -33,7 +33,7 @@ HORARIOS = [
 ]
 
 # --- CONSTANTE DA IMAGEM ---
-CAMINHO_IMAGEM_AGENDAMENTO = "img/Agendamento_barbearia.png" 
+CAMINHO_IMAGEM_AGENDAMENTO = "img/agendamento_barbearia.png" 
 # ---------------------------
 
 # MAPAS DE ACESSO ADMIN (Lido do st.secrets)
